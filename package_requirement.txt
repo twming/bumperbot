@@ -1,0 +1,30 @@
+sudo apt install
+----------------
+libserial-dev
+
+ros-humble-ros2-control
+ros-humble-ros2-controllers
+ros-humble-xacro
+ros-humble-ros-gz*  (ignition-gz)
+ros-humble-*-ros2-control (ignition-gz)
+ros-humble-joint-state-publisher-gui
+ros-humble-robot-localization
+ros-humble-joy
+ros-humble-joy-teleop
+ros-humble-tf-transformations
+ros-humble-plotjuggler*
+
+ros-humble-gazebo-ros2-control
+ros-humble-joint-state-broadcaster
+ros-humble-velocity-controllers
+ros-humble-diff-drive-controller
+
+pip install
+-----------
+transforms3d
+smbus
+
+Arduino install
+---------------
+PID
+

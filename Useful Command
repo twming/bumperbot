@@ -1,0 +1,396 @@
+PART 1 - Basic ROS
+------------------
+ros2 run bumperbot_cpp_examples simple_publisher 
+ros2 run bumperbot_cpp_examples simple_subscriber
+
+ros2 run bumperbot_py_examples simple_publisher 
+ros2 run bumperbot_py_examples simple_subscriber
+
+ros2 run bumperbot_cpp_examples simple_service_server
+ros2 run bumperbot_cpp_examples simple_service_client 3 4
+
+ros2 run bumperbot_py_examples simple_service_server
+ros2 run bumperbot_py_examples simple_service_client 3 4
+-----------------------------------
+
+PART 2 - Robot Setup and Controller
+-----------------------------------
+# 38 ROS2 Parameter CLI
+ros2 run bumperbot_py_examples simple_parameter 
+ros2 param list
+ros2 param get /simple_parameter simple_int_param
+ros2 param set /simple_parameter simple_int_param 30
+ros2 param get /simple_parameter simple_string_param
+ros2 param set /simple_parameter simple_string_param John
+
+# 39 Visualize the Robot
+ros2 run robot_state_publisher robot_state_publisher --ros-args -p robot_description:="$(xacro /root/dev_ws/src/bumperbot_description/urdf/bumperbot.urdf.xacro)"
+ros2 run joint_state_publisher_gui joint_state_publisher_gui
+
+# 40 Visualize the Robot with Launch File
+ros2 launch bumperbot_description display.launch.py
+
+# 43/44 Simulate the Robot/Launch the Simulation
+ros2 launch bumperbot_description gazebo.launch.py
+
+# 51 ROS2 Control CLI
+ros2 launch bumperbot_description gazebo.launch.py
+ros2 launch bumperbot_controller define_simple_controller.launch.py 
+ros2 control list_controllers
+ros2 control list_hardware_interfaces
+
+# 71 Launch the Simple Controller
+# Design a simple controller with wheel_radius and wheel_separation
+# bumperbot_description
+# - bumperbot.urdf.xacro
+# - bumperbot_ros2_control.xacro
+# - bumperbot_gazebo.xacro
+# bumperbot_controller
+# - config/bumperbot_controllers.yaml
+# - bumperbot_controller/simple_controller.py
+# - launch/controller_simple.launch.py
+ros2 launch bumperbot_description gazebo.launch.py
+ros2 launch bumperbot_controller simple_controller.launch.py 
+ros2 control list_controllers
+ros2 control list_hardware_interfaces
+
+ros2 launch bumperbot_controller simple_controller.launch.py --show-args
+ros2 launch bumperbot_controller simple_controller.launch.py use_python:=False
+ros2 topic pub /bumperbot_controller/cmd_vel geometry_msgs/msg/TwistStamped "header:
+  stamp:
+    sec: 0
+    nanosec: 0
+  frame_id: ''
+twist:
+  linear:
+    x: 0.5
+    y: 0.0
+    z: 0.0
+  angular:
+    z: 1.0"
+
+ros2 topic pub /simple_velocity_controller/commands std_msgs/msg/Float64MultiArray "layout:
+  dim: []
+  data_offset: 0
+data: [1.0,0.0]"
+
+# 72 Teleoperating with Joystick
+# Design a simple controller using Joystick controller
+# - config/joy_config.yaml
+# - config/joy_teleop.yaml
+# - launch/joystick_teleop.launch.py
+# need to hold on top-button to move
+ros2 launch bumperbot_description gazebo.launch.py
+ros2 launch bumperbot_controller simple_controller.launch.py 
+ros2 launch bumperbot_controller joystick_telop.launch.py
+
+# 73 Add the diff driver controller
+# Method 1: Use config/bumperbot_controllers.yaml
+# use_simple_controller: = False
+# Method 2: Use bumperbot_controller/simple_controller.py
+# use_simple_controller: = True
+ros2 launch bumperbot_description gazebo.launch.py
+ros2 launch bumperbot_controller simple_diffdrive_controller.launch.py 
+ros2 launch bumperbot_controller simple_diffdrive_controller.launch.py --show-args
+ros2 launch bumperbot_controller simple_diffdrive_controller.launch.py use_simple_controller:=false
+ros2 topic pub /bumperbot_controller/cmd_vel geometry_msgs/msg/TwistStamped "header:
+  stamp:
+    sec: 0
+    nanosec: 0
+  frame_id: ''
+twist:
+  linear:
+    x: 0.5
+    y: 0.0
+    z: 0.0
+  angular:
+    z: 1.0"
+-------------------------------------------
+
+PART 3 - TF, Kinematic, Odometry, Broadcast
+-------------------------------------------
+# 77 Simple TF2 Static Broadcaster
+# Create a static TF for bumperbot_top on bumperbot_base, with translation.z=0.3 and rotation.w=1.0
+ros2 run bumperbot_py_examples simple_tf_kinematics
+ros2 run bumperbot_cpp_examples simple_tf_kinematics
+ros2 topic list
+ros2 topic echo /tf_static 
+ros2 run rviz2 rviz2
+# transforms:
+# - header:
+#     stamp:
+#       sec: 1741572293
+#       nanosec: 539550325
+#     frame_id: bumperbot_base
+#   child_frame_id: bumperbot_top
+#   transform:
+#     translation:
+#       x: 0.0
+#       y: 0.0
+#       z: 0.3
+#     rotation:
+#       x: 0.0
+#       y: 0.0
+#       z: 0.0
+#       w: 1.0
+# ---
+
+# 79 Simple TF2 Broadcaster
+# Create dynamic transform, that change over time
+# bumperbot_base change with respect to odom
+# Change rviz2 "Fixed Frame" to "odom"
+# Add TF, turn on all frame and show names
+ros2 run rviz2 rviz2
+ros2 run bumperbot_py_examples simple_tf_kinematics_dynamic
+ros2 run bumperbot_cpp_examples simple_tf_kinematics_dynamic
+
+# 86 Simple TF2 Listener
+# Implement TF2 Listener using bumperbot_msgs/srv/GetTransform.srv
+# File use: -
+# - bumperbot_msgs/srv/GetTransform.srv
+# - bumperbot_py_examples/simple_tf_listener
+ros2 run rviz2 rviz2
+ros2 run bumperbot_py_examples simple_tf_listener
+ros2 run bumperbot_cpp_examples simple_tf_listener
+ros2 service list
+ros2 service call /get_transform bumperbot_msgs/srv/GetTransform "{frame_id: 'odom', child_frame_id: 'bumperbot_top'}"
+# response:
+# bumperbot_msgs.srv.GetTransform_Response(transform=geometry_msgs.msg.TransformStamped(
+#     header=std_msgs.msg.Header(stamp=builtin_interfaces.msg.Time(sec=1741574398, nanosec=62166300), frame_id='odom'), 
+#     child_frame_id='bumperbot_top', 
+#     transform=geometry_msgs.msg.Transform(translation=geometry_msgs.msg.Vector3(x=21.300000000000168, y=0.0, z=0.3), 
+#     rotation=geometry_msgs.msg.Quaternion(x=0.0, y=0.0, z=0.6051864057360393, w=0.796083798549056))), success=True)
+
+# 91 Euler to Quaternion
+ros2 run rviz2 rviz2
+ros2 run bumperbot_py_examples simple_tf_euler_to_quaternion
+ros2 run bumperbot_cpp_examples simple_tf_euler_to_quaternion
+
+# 93 TF2 Tools
+ros2 run tf2_tools view_frames 
+ros2 run tf2_ros tf2_echo bumperbot_base bumperbot_top
+# At time 0.0
+# - Translation: [0.000, 0.000, 0.300]
+# - Rotation: in Quaternion [0.000, 0.000, 0.000, 1.000]
+# - Rotation: in RPY (radian) [0.000, -0.000, 0.000]
+# - Rotation: in RPY (degree) [0.000, -0.000, 0.000]
+# - Matrix:
+#   1.000  0.000  0.000  0.000
+#   0.000  1.000  0.000  0.000
+#   0.000  0.000  1.000  0.300
+#   0.000  0.000  0.000  1.000
+ros2 run tf2_ros tf2_echo odom bumperbot_top
+# At time 1741575724.76587814
+# - Translation: [4.050, 0.000, 0.300]
+# - Rotation: in Quaternion [0.000, 0.000, 0.899, -0.439]
+# - Rotation: in RPY (radian) [0.000, -0.000, -2.233]
+# - Rotation: in RPY (degree) [0.000, -0.000, -127.952]
+# - Matrix:
+#  -0.615  0.789  0.000  4.050
+#  -0.789 -0.615  0.000  0.000
+#   0.000  0.000  1.000  0.300
+#   0.000  0.000  0.000  1.000
+
+# 98 Differential Inverse Kinematic
+# From the Joint State, calculate the linear and angular velocity of the robot
+# - bumperbot_control/simple_controller_differential_IK.py
+# - bumperbot_control/launch/controller_simple_diffdrive_differential_IK.launch.py
+ros2 launch bumperbot_description gazebo.launch.py
+ros2 launch bumperbot_controller simple_diffdrive_differential_IK_controller.launch.py 
+ros2 launch bumperbot_controller simple_diffdrive_differential_IK_controller.launch.py use_python:=False
+ros2 launch bumperbot_controller simple_diffdrive_differential_IK_controller.launch.py use_python:=False use_simple_controller:=False
+ros2 topic pub /bumperbot_controller/cmd_vel geometry_msgs/msg/TwistStamped "header:
+  stamp:
+    sec: 0
+    nanosec: 0
+  frame_id: ''
+twist:
+  linear:
+    x: 0.2
+    y: 0.0
+    z: 0.0
+  angular:
+    x: 0.0
+    y: 0.0
+    z: 0.2" 
+# [simple_controller_differential_IK.py-3] [INFO] [1741578069.036556779] [simple_controller]: linear: 0.200138, angular: 0.200195
+
+# 102 Wheel Odometry
+# Calculate the position (x, y and theta) of the robot
+# - bumperbot_control/simple_controller_differential_IK_odom.py
+# - bumperbot_control/launch/controller_simple_diffdrive_differential_IK_odom.launch.py
+ros2 launch bumperbot_description gazebo.launch.py
+ros2 launch bumperbot_controller simple_diffdrive_differential_IK_odom_controller.launch.py 
+ros2 launch bumperbot_controller simple_diffdrive_differential_IK_odom_controller.launch.py use_python:=False 
+ros2 launch bumperbot_controller simple_diffdrive_differential_IK_odom_controller.launch.py use_python:=False use_simple_controller:=False
+ros2 topic pub /bumperbot_controller/cmd_vel geometry_msgs/msg/TwistStamped "header:
+  stamp:
+    sec: 0
+    nanosec: 0
+  frame_id: ''
+twist:
+  linear:
+    x: 0.2
+    y: 0.0
+    z: 0.0
+  angular:
+    x: 0.0
+    y: 0.0
+    z: 0.2" 
+# [simple_controller_differential_IK_odom.py-3] [INFO] [1741579186.690939536] [simple_controller]: linear: 0.199885, angular: 0.196543
+# [simple_controller_differential_IK_odom.py-3] [INFO] [1741579186.691317609] [simple_controller]: x: 0.894292, y: 0.532408, theta: 1.083905
+
+# 104 Publish Odometry Message
+# Create Odom object and publish odom message
+# - bumperbot_control/simple_controller_differential_IK_odom_msg.py
+# - bumperbot_control/launch/controller_simple_diffdrive_differential_IK_odom_msg.launch.py
+ros2 launch bumperbot_description gazebo.launch.py
+ros2 launch bumperbot_controller simple_diffdrive_differential_IK_odom_msg_controller.launch.py 
+ros2 launch bumperbot_controller simple_diffdrive_differential_IK_odom_msg_controller.launch.py use_python:=False 
+ros2 launch bumperbot_controller simple_diffdrive_differential_IK_odom_msg_controller.launch.py use_python:=False use_simple_controller:=False
+ros2 topic pub /bumperbot_controller/cmd_vel geometry_msgs/msg/TwistStamped "header:
+  stamp:
+    sec: 0
+    nanosec: 0
+  frame_id: ''
+twist:
+  linear:
+    x: 0.2
+    y: 0.0
+    z: 0.0
+  angular:
+    x: 0.0
+    y: 0.0
+    z: 0.2" 
+ros2 topic echo /bumperbot_controller/odom --no-arr
+# header:
+#   stamp:
+#     sec: 1741580280
+#     nanosec: 108689602
+#   frame_id: odom
+# child_frame_id: base_footprint
+# pose:
+#   pose:
+#     position:
+#       x: 0.4698927050362534
+#       y: 1.886024493058038
+#       z: 0.0
+#     orientation:
+#       x: 0.0
+#       y: -0.0
+#       z: -0.9713706127981423
+#       w: -0.23756921642368053
+#   covariance:
+#   - [ 0.0, 0.0 ... 0.0, 0.0 ]
+# twist:
+#   twist:
+#     linear:
+#       x: 0.2000613947522254
+#       y: 0.0
+#       z: 0.0
+#     angular:
+#       x: 0.0
+#       y: 0.0
+#       z: 0.1989683311877101
+#   covariance:
+#   - [ 0.0, 0.0 ... 0.0, 0.0 ]
+# ---
+
+# 106 Broadcast Odometry Transform
+# Broadcast odom message
+# - bumperbot_control/simple_controller_differential_IK_odom_msg_broadcast.py
+# - bumperbot_control/launch/controller_simple_diffdrive_differential_IK_odom_msg_broadcast.launch.py
+ros2 launch bumperbot_description gazebo.launch.py
+ros2 launch bumperbot_controller simple_diffdrive_differential_IK_odom_msg_broadcast_controller.launch.py 
+ros2 launch bumperbot_controller simple_diffdrive_differential_IK_odom_msg_broadcast_controller.launch.py use_python:=False 
+ros2 launch bumperbot_controller simple_diffdrive_differential_IK_odom_msg_broadcast_controller.launch.py use_python:=False use_simple_controller:=False
+ros2 run rviz2 rviz2
+ros2 topic pub /bumperbot_controller/cmd_vel geometry_msgs/msg/TwistStamped "header:
+  stamp:
+    sec: 0
+    nanosec: 0
+  frame_id: ''
+twist:
+  linear:
+    x: 0.2
+    y: 0.0
+    z: 0.0
+  angular:
+    x: 0.0
+    y: 0.0
+    z: 0.2" 
+------------------------------------
+
+PART 4 - Sensor and Noisy Controller
+------------------------------------
+# 116/119 Probability for Robotic/ Gaussion noise in Odom
+# Broadcast noisy odom message and compare 
+ros2 launch bumperbot_description gazebo.launch.py
+ros2 launch bumperbot_controller noisy_controller.launch.py
+ros2 topic list
+# /bumperbot_controller/odom
+# /bumperbot_controller/odom_noisy
+sudo apt install ros-humble-plotjuggler*
+ros2 run plotjuggler plotjuggler
+ros2 topic pub /bumperbot_controller/cmd_vel geometry_msgs/msg/TwistStamped "header:
+  stamp:
+    sec: 0
+    nanosec: 0
+  frame_id: ''
+twist:
+  linear:
+    x: 0.2
+    y: 0.0
+    z: 0.0
+  angular:
+    x: 0.0
+    y: 0.0
+    z: 0.2" 
+ros2 launch bumperbot_controller joystick_telop.launch.py
+ros2 run rviz2 rviz2
+
+# 134 Imu, Kalman Filter and Noise Reduction
+ros2 launch bumperbot_description gazebo.launch.py
+ros2 launch bumperbot_controller noisy_controller.launch.py use_simple_controller:=False 
+ros2 launch bumperbot_controller noisy_controller.launch.py use_simple_controller:=False use_python:=False
+ros2 run bumperbot_localization kalman_filter.py
+ros2 run bumperbot_localization kalman_filter
+ros2 run plotjuggler plotjuggler
+
+# 134 Imu Testing on Raspberry Pi
+ros2 run bumperbot_firmware mpu6050_driver.py
+sudo apt install ros-humble-rviz-imu-plugin
+
+-----------------------------------------
+
+PART 5 - Lifecycle and Hardware interface
+-----------------------------------------
+ros2 run bumperbot_cpp_examples simple_lifecycle_node
+ros2 run bumperbot_py_examples simple_lifecycle_node
+
+ros2 lifecycle nodes
+ros2 lifecycle get /simple_lifecycle_node
+# unconfigred [1]
+ros2 lifecycle list /simple_lifecycle_node 
+# available transitions
+# - configure [1]
+#         Start: unconfigured
+#         Goal: configuring
+# - shutdown [5]
+#         Start: unconfigured
+#         Goal: shuttingdown
+ros2 lifecycle set /simple_lifecycle_node 1
+# simple_lifecycle_node 1
+# Transitioning successful
+# /chatter topic is avaialble
+ros2 topic list
+ros2 topic pub /chatter std_msgs/msg/String "data: 'Hi'"
+# /chatter topic is available for receive
+ros2 lifecycle list /simple_lifecycle_node 
+ros2 lifecycle set /simple_lifecycle_node activate
+ros2 topic pub /chatter std_msgs/msg/String "data: 'Hi'"
+# Shutdown
+ros2 lifecycle list /simple_lifecycle_node 
+ros2 lifecycle set /simple_lifecycle_node 7
+ros2 topic list
+
